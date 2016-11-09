@@ -11,11 +11,11 @@ This leads to a few annoying inconsistencies in my collection's metadata, for ex
 * Extended text is either left to manual entry or automatically pulled from wherever. My preference is for it to be the content of the publisher's HTML description.
 * URL is whatever is presented to the client, including mobile-specific hostnames (e.g. mobile.nytimes.com or en.m.wikipedia.org) or redirect services (e.g. feedproxy.google.com or feeds.gawker.com). My preference is to use the publisher's canonical URL.
 
-~pinboard_cleaner~ goes through your Pinboard bookmarks and compares them to the source HTML, replacing existing data with my preferences as described above.
+pinboard\_cleaner goes through your Pinboard bookmarks and compares them to the source HTML, replacing existing data with my preferences as described above.
 
 You'll need a file called "secret.py" in the same directory as the script. The secret.py file should contain a single line with your token in the form
 
-~token = 'username:TOKENSTRING'~
+`token = 'username:TOKENSTRING'`
 
 Running `python pinboard_cleaner.py` on the command line will search for your first 50 bookmarks tagged ".2n", clean them up, and change the tag to ".n".
 Running `python pinboard_cleaner.py --help` will tell you how to switch things up.
