@@ -12,6 +12,7 @@ import secret
 
 import argparse
 import logging
+import ssl
 import sys
 
 from bs4 import BeautifulSoup
@@ -23,14 +24,13 @@ TAG_TO_ADD = '.n'
 pb = pinboard.Pinboard(secret.token)
 
 def get_html(b):
-    logging.info('Retrieving %s' % b.url)
     try:
         request = requests.get(b.url)
         request.raise_for_status()
         return BeautifulSoup(request.text, 'html.parser')
     except Exception as e:
         try:
-            logging.info('Retrieving %s as a browser' % b.url)
+            logging.debug('Retrieving %s as a browser' % b.url)
             request = requests.get(b.url, headers={
                 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_1) AppleWebKit/602.2.14 (KHTML, like Gecko) Version/10.0.1 Safari/602.2.14',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
@@ -47,7 +47,7 @@ def update_title(b,p):
     else:
         title = b.description
     if title and (b.description != title):
-        logging.info('Updating title for %s' % b.url)
+        logging.debug('Updating title for %s' % b.url)
         b.description = title if isinstance(title, unicode) else unicode(title, 'utf-8')
         return True
     else:
@@ -68,6 +68,8 @@ def update_extended(b,p):
         description = None
 
     if description and (b.extended != description):
+        if len(description) > 255:
+            description = description[:252] + '...'
         b.extended = description if isinstance(description, unicode) else unicode(description, 'utf-8')
         return True
     else:
@@ -104,10 +106,12 @@ def main():
     retitled = 0
     reextended = 0
     canonicalized = 0
+    failures = ''
 
     logging.warning('Start: %d bookmarks to process' % len(bookmarks))
 
-    for bookmark in bookmarks:
+    for i, bookmark in enumerate(bookmarks):
+        logging.info('Cleaning %d of %d: %s' % (i+1, len(bookmarks), bookmark.url))
         html = get_html(bookmark)
         if html:
             if update_title(bookmark,html):
@@ -128,23 +132,29 @@ def main():
                     'toread': bookmark.toread,
                 }
                 pb.posts.add(**params)
+
                 logging.info('Cleaned %s' % bookmark.url)
                 succeeded += 1
             except Exception as e:
                 logging.error('Save failed for %s with error %s' % (bookmark.url, e))
                 failed += 1
+                failures += bookmark.url + ' '
             if canonicalize_url(bookmark,html):
                 canonicalized += 1
         else:
             logging.error('HTML not retrieved for %s' % bookmark.url)
+            failed += 1
+            failures += '\n' + bookmark.url
 
-    logging.warning('Done: %d retitled, %d descriptions updated, %d canonicalized, %d succeeded, %d failed' % (retitled, reextended, canonicalized, succeeded, failed))
+    logging.warning('Done: %d retitled, %d descriptions updated, %d canonicalized, %d succeeded, %d failures' % (retitled, reextended, canonicalized, succeeded, failed))
+    if failures:
+        logging.warning('Failures at %s' % failures)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-l', '--log', dest='loglevel', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], help='set the logging level (default WARNING)', default='WARNING')
-    parser.add_argument('-t', '--tag', dest='tag_to_find', help='clean bookmarks with this tag (default ".2n")', default='.2n')
+    parser.add_argument('-l', '--log', dest='loglevel', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], help='set the logging level (default WARNING)', default='INFO')
     parser.add_argument('-m', '--max', dest='max_results', type=int, help='clean this many bookmarks (default 50)', default=50)
+    parser.add_argument('-t', '--tag', dest='tag_to_find', help='clean bookmarks with this tag (default ".2n")', default='.2n')
     args = parser.parse_args()
     logging.basicConfig(filename='pinboard_cleaner.log', level=args.loglevel, format='%(levelname)s %(asctime)s %(message)s')
     main()
