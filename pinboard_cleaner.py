@@ -48,7 +48,7 @@ def update_title(b,p):
         title = b.description
     if title and (b.description != title):
         logging.debug('Updating title for %s' % b.url)
-        b.description = title if isinstance(title, unicode) else unicode(title, 'utf-8')
+        b.description = title if isinstance(title, str) else unicode(title, 'utf-8')
         return True
     else:
         return False
@@ -70,7 +70,7 @@ def update_extended(b,p):
     if description and (b.extended != description):
         if len(description) > 255:
             description = description[:252] + '...'
-        b.extended = description if isinstance(description, unicode) else unicode(description, 'utf-8')
+        b.extended = description if isinstance(description, str) else unicode(description, 'utf-8')
         return True
     else:
         return False
